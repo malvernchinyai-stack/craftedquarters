@@ -242,9 +242,10 @@ const PDF = (() => {
 
     // Amount in words (left of totals)
     pdf.setFontSize(8); pdf.setTextColor(...BLUE); pdf.setFont('helvetica', 'bold');
-    pdf.text(isInv ? 'BALANCE DUE IN WORDS' : 'AMOUNT IN WORDS', M, blockTop + 4);
+    const wordsOnBalance = isInv && T.balance > 0 && T.paid > 0;
+    pdf.text(wordsOnBalance ? 'BALANCE DUE IN WORDS' : 'AMOUNT IN WORDS', M, blockTop + 4);
     pdf.setTextColor(...TEXT); pdf.setFont('helvetica', 'italic'); pdf.setFontSize(8.8);
-    const words = pdf.splitTextToSize(CQ.amountWords(isInv ? T.balance : T.total, cur), tX - M - 8);
+    const words = pdf.splitTextToSize(CQ.amountWords(wordsOnBalance ? T.balance : T.total, cur), tX - M - 8);
     pdf.text(words, M, blockTop + 9);
     let leftY = blockTop + 9 + words.length * 4.2 + 3;
     if (isInv && T.paid > 0 && (doc.payments || []).length) {
@@ -255,6 +256,19 @@ const PDF = (() => {
         pdf.text(`${CQ.fmtDate(p.date)}  ·  ${p.method || 'Payment'}${p.ref ? ' (' + p.ref + ')' : ''}  ·  ${CQ.money(p.amount, cur)}`, M, leftY);
         leftY += 4.1;
       });
+    }
+    // Status stamp for settled / cancelled invoices
+    const st = isInv ? CQ.statusOf(doc) : '';
+    if (st === 'Paid' || st === 'Cancelled') {
+      const label = st === 'Paid' ? 'PAID IN FULL' : 'CANCELLED';
+      const col = st === 'Paid' ? [20, 138, 75] : [192, 50, 43];
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(13);
+      const tw = pdf.getTextWidth(label) + 10;
+      pdf.setDrawColor(...col); pdf.setLineWidth(0.8); pdf.setTextColor(...col);
+      pdf.roundedRect(M, leftY + 1, tw, 10, 1.5, 1.5, 'S');
+      pdf.text(label, M + 5, leftY + 8.1);
+      pdf.setLineWidth(0.2);
+      leftY += 14;
     }
     y = Math.max(y, leftY) + 7;
 
@@ -278,8 +292,8 @@ const PDF = (() => {
     block('TERMS & CONDITIONS', doc.terms, false);
 
     // ---------- Signatures ----------
-    ensure(26);
-    y += 6;
+    ensure(24);
+    y += 4;
     const sw = (W - 2 * M - 20) / 2;
     const sig = (x, label, name) => {
       pdf.setDrawColor(...MUTED); pdf.line(x, y + 10, x + sw, y + 10);

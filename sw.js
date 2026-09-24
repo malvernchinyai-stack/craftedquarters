@@ -1,5 +1,5 @@
 /* Crafted Quarters Docs – service worker (offline-first) */
-const CACHE = 'cq-docs-v1.0.0';
+const CACHE = 'cq-docs-v1.1.0';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest', './css/app.css',
   './js/db.js', './js/core.js', './js/pdf.js', './js/app.js',

@@ -1,6 +1,13 @@
 /* Crafted Quarters Docs – main application */
 (() => {
-  const APP_VERSION = '1.0.0';
+  const APP_VERSION = '1.1.0';
+  // Developer credit – shown inside the app only, never on printed / PDF documents
+  const DEVELOPER = {
+    name: 'Pilotage Business Consultants (Pvt) Ltd',
+    web: 'https://www.pilotage.co.zw', webLabel: 'www.pilotage.co.zw',
+    email: 'info@pilotage.co.zw', phone: '+263 716 572 205'
+  };
+  const devCredit = () => `<div class="dev-credit">This application was developed by<br><b>${DEVELOPER.name}</b></div>`;
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -38,31 +45,50 @@
   }
   function statusPill(st) { return `<span class="pill s-${esc(st.replace(/\s/g, ''))}">${esc(st)}</span>`; }
 
-  function openSheet(html, onMount) {
+  // Bottom sheets register a history entry so the Android back button closes them
+  let sheetPushed = false, popWaiter = null, sheetDismiss = null;
+  function openSheet(html, onMount, onDismiss = null) {
     const sh = $('#sheet'), bd = $('#sheetBackdrop');
-    sh.innerHTML = html; sh.hidden = false; bd.hidden = false;
+    if (sh.hidden) { history.pushState({ cqSheet: 1 }, ''); sheetPushed = true; }
+    sheetDismiss = onDismiss;
+    sh.innerHTML = html; sh.hidden = false; bd.hidden = false; sh.scrollTop = 0;
     document.body.style.overflow = 'hidden';
     if (onMount) onMount(sh);
     const first = sh.querySelector('input:not([type=hidden]),textarea');
     if (first && !first.dataset.noautofocus && window.matchMedia('(min-width: 760px)').matches) first.focus();
     return sh;
   }
-  function closeSheet() {
+  function hideSheet() {
     $('#sheet').hidden = true; $('#sheetBackdrop').hidden = true; $('#sheet').innerHTML = '';
     document.body.style.overflow = '';
+    sheetDismiss = null;
   }
-  $('#sheetBackdrop').addEventListener('click', closeSheet);
+  function closeSheet() {
+    hideSheet();
+    if (!sheetPushed) return Promise.resolve();
+    sheetPushed = false;
+    return new Promise(resolve => {
+      popWaiter = resolve;
+      history.back();
+      setTimeout(() => { if (popWaiter === resolve) { popWaiter = null; resolve(); } }, 600);
+    });
+  }
+  window.addEventListener('popstate', () => {
+    if (popWaiter) { const r = popWaiter; popWaiter = null; r(); return; }
+    if (!$('#sheet').hidden) { const d = sheetDismiss; sheetPushed = false; hideSheet(); if (d) d(); }
+  });
+  $('#sheetBackdrop').addEventListener('click', () => { const d = sheetDismiss; closeSheet(); if (d) d(); });
 
   function confirmSheet(title, message, okLabel = 'Confirm', danger = false) {
     return new Promise(resolve => {
       openSheet(`<h3>${esc(title)}</h3><p class="muted">${esc(message)}</p>
         <div class="btn-row"><button class="btn btn-line" data-a="no">Cancel</button>
         <button class="btn ${danger ? 'btn-danger' : 'btn-primary'}" data-a="yes">${esc(okLabel)}</button></div>`, sh => {
-        sh.addEventListener('click', e => {
+        sh.addEventListener('click', async e => {
           const a = e.target.closest('[data-a]'); if (!a) return;
-          closeSheet(); resolve(a.dataset.a === 'yes');
+          await closeSheet(); resolve(a.dataset.a === 'yes');
         });
-      });
+      }, () => resolve(false));
     });
   }
 
@@ -87,7 +113,13 @@
     S.prefixes = { ...CQ.DEFAULT_SETTINGS.prefixes, ...(S.prefixes || {}) };
     S.counters = { ...CQ.DEFAULT_SETTINGS.counters, ...(S.counters || {}) };
     S.terms = { ...CQ.DEFAULT_SETTINGS.terms, ...(S.terms || {}) };
-    if (!s) await DB.put('meta', S);
+    // Numbering restarts every calendar year (QT-2027-0001 …)
+    const yr = new Date().getFullYear();
+    if (S.counterYear !== yr) {
+      if (S.counterYear) S.counters = { quote: 0, invoice: 0, boq: 0 };
+      S.counterYear = yr;
+      await DB.put('meta', S);
+    } else if (!s) await DB.put('meta', S);
   }
   const saveSettings = () => DB.put('meta', S);
 
@@ -131,7 +163,7 @@
     }
     if (!h.startsWith('#/edit/') && !h.startsWith('#/new/')) editor = null;
     lastHash = h;
-    closeSheet();
+    if (!$('#sheet').hidden) { sheetPushed = false; hideSheet(); }
     for (const [re, fn] of routes) {
       const m = h.match(re);
       if (m) { await fn(m); window.scrollTo(0, 0); return; }
@@ -189,18 +221,26 @@
       </div>
       <div class="section-title">This business</div>
       <div class="stats">
-        <div class="stat"><b>${openQuotes.length}</b><span>Open quotes · ${CQ.money(openQuoteValue, cur)}</span></div>
-        <div class="stat"><b>${invoices.length}</b><span>Invoices issued</span></div>
-        <div class="stat"><b>${docs.filter(d => d.type === 'boq').length}</b><span>Bills of quantities</span></div>
+        <div class="stat"><b>${openQuotes.length}</b><span>Open quotes</span><small>${CQ.money(openQuoteValue, cur)}</small></div>
+        <div class="stat"><b>${invoices.length}</b><span>Invoices</span><small>${CQ.money(invoices.reduce((a, d) => a + CQ.totals(d).total, 0), cur)}</small></div>
+        <div class="stat"><b>${docs.filter(d => d.type === 'boq').length}</b><span>BOQs</span><small>${CQ.money(docs.filter(d => d.type === 'boq').reduce((a, d) => a + CQ.totals(d).total, 0), cur)}</small></div>
       </div>
       ${overdue.length ? `<div class="section-title">Overdue</div><div class="list">${overdue.map(docRow).join('')}</div>` : ''}
       <div class="section-title">Recent documents <a href="#/docs">See all</a></div>
       ${recent.length ? `<div class="list">${recent.map(docRow).join('')}</div>` :
         `<div class="card empty">${ICON.doc}<div><b>No documents yet</b></div><div>Tap a button above to create your first quotation, invoice or BOQ.</div></div>`}
+      ${backupDue(docs) ? `<div class="card notice" style="margin-top:14px"><div><b>Back up your records</b><div class="muted" style="font-size:13px">${S.lastBackupAt ? `Last backup ${CQ.fmtDate(S.lastBackupAt.slice(0, 10))}.` : 'No backup made yet.'} Records are stored only on this phone.</div></div><a class="btn btn-blue btn-sm" href="#/settings">Back up</a></div>` : ''}
       ${installPrompt ? `<div class="card" style="margin-top:14px"><h2>Install on this device</h2><p class="muted mt0">Add Crafted Quarters Docs to your home screen so it opens like an app and works offline.</p><button class="btn btn-blue btn-block" id="installBtn">Install app</button></div>` : ''}
+      ${devCredit()}
     `;
     $$('[data-new]', view).forEach(b => b.onclick = () => location.hash = `#/new/${b.dataset.new}`);
     const ib = $('#installBtn'); if (ib) ib.onclick = doInstall;
+  }
+
+  function backupDue(docs) {
+    if (!docs.length) return false;
+    if (!S.lastBackupAt) return docs.length >= 3;
+    return (Date.now() - new Date(S.lastBackupAt).getTime()) > 14 * 864e5;
   }
 
   function docRow(d) {
@@ -282,7 +322,8 @@
       ${d.intro ? `<p>${esc(d.intro).replace(/\n/g, '<br>')}</p>` : ''}
       <div class="table-wrap"><table><thead><tr><th class="c">${d.type === 'boq' ? 'Item' : '#'}</th><th>Description</th><th class="c">Unit</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th></tr></thead><tbody>${rows}</tbody></table></div>
       <div class="p-tot totals">${totalsRows(d, T, cur)}</div>
-      <div class="words">${esc(CQ.amountWords(d.type === 'invoice' ? T.balance : T.total, cur))}</div>
+      <div class="words">${esc(CQ.amountWords(d.type === 'invoice' && T.paid > 0 && T.balance > 0 ? T.balance : T.total, cur))}</div>
+      ${d.type === 'invoice' && ['Paid', 'Cancelled'].includes(CQ.statusOf(d)) ? `<div style="margin-top:10px"><span class="stamp ${CQ.statusOf(d) === 'Paid' ? 'paid' : 'cancelled'}">${CQ.statusOf(d) === 'Paid' ? 'PAID IN FULL' : 'CANCELLED'}</span></div>` : ''}
       ${d.type !== 'boq' || d.showBank ? `<div class="p-box"><b>Banking details</b>\n${esc(S.bank)}</div>` : ''}
       ${d.notes ? `<div class="p-box line-box"><b>Notes</b>\n${esc(d.notes)}</div>` : ''}
       ${d.terms ? `<div class="p-box line-box"><b>Terms &amp; conditions</b>\n${esc(d.terms)}</div>` : ''}
@@ -427,6 +468,14 @@
     delete d.validUntil; delete d.dueDate;
     if (toType === 'quote') d.validUntil = CQ.addDays(d.date, S.quoteValidDays);
     if (toType === 'invoice') d.dueDate = CQ.addDays(d.date, S.invoiceDueDays);
+    if (src.type === 'boq' && toType !== 'boq') {
+      const T = CQ.totals(src);
+      if (T.contingency > 0) {
+        d.sections[d.sections.length - 1].items.push(CQ.newItem({ description: `Contingency allowance (${CQ.num(src.contingency)}%)`, unit: 'Sum', qty: 1, rate: T.contingency }));
+      }
+      d.contingency = 0;
+      if (toType === 'invoice') d.showBank = true;
+    }
     if (toType !== src.type) {
       d.terms = S.terms[toType];
       if (toType === 'invoice' && src.number) d.reference = d.reference || `Ref ${src.number}`;
@@ -474,7 +523,7 @@
       <div class="card"><h2>${CQ.TYPES[d.type].label} details</h2>
         <div class="grid2"><div class="field"><label>Number</label><input data-f="number" value="${esc(d.number)}"></div>
           <div class="field"><label>Date</label><input type="date" data-f="date" value="${esc(d.date)}"></div></div>
-        <div class="grid2"><div class="field"><label>Currency</label><select data-f="currency">${Object.entries(CQ.CURRENCIES).map(([k, v]) => `<option value="${k}" ${k === d.currency ? 'selected' : ''}>${k} – ${v.name}</option>`).join('')}</select></div>
+        <div class="grid2"><div class="field"><label>Currency</label><select data-f="currency">${Object.entries(CQ.CURRENCIES).map(([k, v]) => `<option value="${k}" ${k === d.currency ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
           ${dateField2}</div>
         ${d.type === 'quote' ? `<div class="grid2">${statusField}<div></div></div>` : ''}
       </div>
@@ -906,12 +955,25 @@
       <div class="sticky-save"><button class="btn btn-primary">Save settings</button></div>
     </form>
     <div class="card"><h2>Backup &amp; restore</h2>
-      <p class="muted mt0">All data is stored only on this device${est ? ` (${est})` : ''}. Export a backup regularly and keep it on Google Drive, email or a computer.</p>
+      <p class="muted mt0">All data is stored only on this device${est ? ` (${est})` : ''}. Export a backup regularly and keep it on Google Drive, email or a computer.${S.lastBackupAt ? ` <br>Last backup: <b>${new Date(S.lastBackupAt).toLocaleString('en-GB')}</b>` : ''}</p>
       <div class="btn-row"><button class="btn btn-blue" id="bkExport">${ICON.pdf}Export backup</button>
         <label class="btn btn-line">Restore backup<input type="file" accept="application/json,.json" id="bkImport" hidden></label></div>
       <p class="hint" style="margin-top:12px">Storage protection: <b>${persisted ? 'on' : 'standard'}</b>${persisted ? '' : ' – <a href="#" id="persistBtn">request protection</a>'}</p></div>
-    <div class="card"><h2>About</h2><p class="muted mt0">Crafted Quarters Docs v${APP_VERSION} · works fully offline.<br>${esc(S.companyName)} · ${esc(S.address)}</p>
-      ${installPrompt ? `<button class="btn btn-blue btn-block" id="installBtn">Install app</button>` : ''}</div>`;
+    <div class="card"><h2>About this app</h2>
+      <p class="mt0">Crafted Quarters Docs <span class="muted">· version ${APP_VERSION} · works fully offline</span></p>
+      <p class="muted">Quotations, invoices and bills of quantities for ${esc(S.companyName)}, ${esc(S.address)}.</p>
+      <div class="dev-box">
+        <div class="lbl">Developed by</div>
+        <b>${DEVELOPER.name}</b>
+        <div class="muted" style="font-size:13px">For support, changes or a system for your own business:</div>
+        <div class="btn-row" style="margin-top:10px">
+          <a class="btn btn-line btn-sm" href="tel:${DEVELOPER.phone.replace(/\s/g, '')}">${DEVELOPER.phone}</a>
+          <a class="btn btn-line btn-sm" href="mailto:${DEVELOPER.email}">${DEVELOPER.email}</a>
+          <a class="btn btn-line btn-sm" href="${DEVELOPER.web}" target="_blank" rel="noopener">${DEVELOPER.webLabel}</a>
+        </div>
+      </div>
+      ${installPrompt ? `<button class="btn btn-blue btn-block" id="installBtn" style="margin-top:12px">Install app</button>` : ''}</div>
+    ${devCredit()}`;
 
     $('#setForm').onsubmit = async e => {
       e.preventDefault();
@@ -933,6 +995,7 @@
     };
     const lr = $('#logoReset'); if (lr) lr.onclick = async () => { S.logo = null; await saveSettings(); renderSettings(); };
     $('#bkExport').onclick = async () => {
+      S.lastBackupAt = new Date().toISOString(); await saveSettings();
       const data = await DB.exportAll();
       const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
       const name = `crafted-quarters-backup-${CQ.todayISO()}.json`;

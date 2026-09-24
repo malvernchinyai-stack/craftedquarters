@@ -5,6 +5,9 @@ Offline Android app (PWA) for **Crafted Quarters (Private) Limited** to create, 
 
 464 Herbert Chitepo St, Masvingo, Zimbabwe · +263 77 391 1346 (calls & WhatsApp) · info@craftedquarters.co.zw
 
+_Developed by **Pilotage Business Consultants (Pvt) Ltd** · www.pilotage.co.zw · info@pilotage.co.zw · +263 716 572 205._
+The developer credit appears inside the app (Home and Settings → About) only; it is never printed on quotations, invoices, BOQs or their PDFs.
+
 ## Features
 - Quotations, invoices and BOQs with sections/bills, line items (qty × rate), discount, VAT, BOQ contingency
 - Branded A4 PDF (approved logo & colours): download, share (WhatsApp, email, Drive) straight from the phone
@@ -14,6 +17,8 @@ Offline Android app (PWA) for **Crafted Quarters (Private) Limited** to create, 
 - Clients book and reusable price list (materials, labour, services)
 - Automatic numbering (QT-2026-0001, INV-2026-0001, BOQ-2026-0001) – prefixes editable
 - Settings: company details, logo, banking details, VAT, currency (USD / ZWG / ZAR), default terms
+- Paid in full / Cancelled stamps on invoices; numbering restarts each year
+- Android back button closes pop-up panels; backup reminder every 14 days
 - 100% offline: data is stored on the device (IndexedDB). Backup/restore to a JSON file
 
 ## Files
