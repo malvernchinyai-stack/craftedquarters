@@ -1,6 +1,6 @@
 /* Crafted Quarters Docs – main application */
 (() => {
-  const APP_VERSION = '1.1.0';
+  const APP_VERSION = '1.2.0';
   // Developer credit – shown inside the app only, never on printed / PDF documents
   const DEVELOPER = {
     name: 'Pilotage Business Consultants (Pvt) Ltd',
@@ -327,6 +327,17 @@
       ${d.type !== 'boq' || d.showBank ? `<div class="p-box"><b>Banking details</b>\n${esc(S.bank)}</div>` : ''}
       ${d.notes ? `<div class="p-box line-box"><b>Notes</b>\n${esc(d.notes)}</div>` : ''}
       ${d.terms ? `<div class="p-box line-box"><b>Terms &amp; conditions</b>\n${esc(d.terms)}</div>` : ''}
+      ${sigBlockHTML(d)}
+    </div>`;
+  }
+
+  function sigBlockHTML(d) {
+    const useSig = S.signature && S.autoSign !== false && d.sign !== false;
+    const name = [d.preparedBy || S.signatoryName || S.preparedBy, S.signatoryTitle].filter(Boolean).join(', ');
+    return `<div class="p-sigs">
+      <div><div class="p-sig-img">${useSig ? `<img src="${S.signature}" alt="Signature">` : ''}</div>
+        <div class="p-sig-line"></div><div class="muted">${d.type === 'boq' ? 'Prepared' : 'Issued'} for and on behalf of ${esc(S.companyName)}</div>${name ? `<b>${esc(name)}</b>` : ''}</div>
+      <div><div class="p-sig-img"></div><div class="p-sig-line"></div><div class="muted">${d.type === 'invoice' ? 'Received' : 'Accepted'} by (client)<br>Name, signature &amp; date</div></div>
     </div>`;
   }
 
@@ -504,7 +515,7 @@
           sections: [CQ.newSection(type === 'boq' ? 'Preliminaries & General' : '')],
           discountType: 'amount', discountValue: 0, contingency: 0,
           vatEnabled: S.vatEnabled, vatRate: S.vatRate,
-          notes: '', terms: S.terms[type] || '', preparedBy: S.preparedBy, payments: [], showBank: false
+          notes: '', terms: S.terms[type] || '', preparedBy: S.preparedBy, payments: [], showBank: false, sign: S.autoSign !== false
         };
         if (type === 'quote') d.validUntil = CQ.addDays(today, S.quoteValidDays);
         if (type === 'invoice') d.dueDate = CQ.addDays(today, S.invoiceDueDays);
@@ -552,7 +563,8 @@
       <div class="card"><h2>Notes &amp; terms</h2>
         <div class="field"><label>Notes (shown on document)</label><textarea data-f="notes" rows="3" placeholder="e.g. Materials to be delivered by client">${esc(d.notes)}</textarea></div>
         <div class="field"><label>Terms &amp; conditions</label><textarea data-f="terms" rows="5">${esc(d.terms)}</textarea></div>
-        <div class="field"><label>Prepared / issued by</label><input data-f="preparedBy" value="${esc(d.preparedBy)}" placeholder="Name of person issuing"></div>
+        <div class="field"><label>Prepared / issued by</label><input data-f="preparedBy" value="${esc(d.preparedBy)}" placeholder="${esc(S.signatoryName || 'Name of person issuing')}"></div>
+        ${S.signature ? `<label class="switch"><span><b>Add Crafted Quarters signature</b><br><span class="muted" style="font-size:12.5px">Uses the signature saved in Settings</span></span><input type="checkbox" data-f="sign" ${d.sign !== false ? 'checked' : ''}></label>` : ''}
         ${d.type === 'boq' ? `<label class="switch"><span>Show banking details on BOQ</span><input type="checkbox" data-f="showBank" ${d.showBank ? 'checked' : ''}></label>` : ''}
       </div>
 
@@ -936,6 +948,22 @@
           <div class="field"><label>TIN</label><input name="tin" value="${esc(S.tin)}"></div>
           <div class="field"><label>VAT No.</label><input name="vatNo" value="${esc(S.vatNo)}"></div></div>
       </div>
+      <div class="card" id="sigCard"><h2>Authorised signature</h2>
+        <p class="muted mt0" style="font-size:13.5px">Upload a photo of the freehand signature. The paper background is removed automatically and the signature is placed on every quotation, invoice and BOQ where Crafted Quarters signs.</p>
+        <div class="sig-preview ${S.signature ? '' : 'empty'}" id="sigPrev">${S.signature ? `<img src="${S.signature}" alt="Signature">` : '<span>No signature yet</span>'}</div>
+        <div id="sigTools" ${S.signatureOriginal ? '' : 'hidden'}>
+          <div class="grid2">
+            <div class="field"><label>Ink colour</label><select id="sigInk">${[['navy', 'Navy (brand)'], ['black', 'Black'], ['blue', 'Blue'], ['original', 'As photographed']].map(([k, l]) => `<option value="${k}" ${(S.sigInk || 'navy') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+            <div class="field"><label>Background removal</label><input type="range" id="sigSens" min="1" max="10" step="1" value="${S.sigSensitivity || 5}"><div class="range-lbl"><span>Stronger</span><span>Keep faint lines</span></div></div>
+          </div>
+        </div>
+        <div class="btn-row" style="margin-bottom:12px"><label class="btn btn-blue btn-sm" style="flex:1">${S.signature ? 'Replace signature' : 'Upload signature'}<input type="file" accept="image/*" id="sigFile" hidden></label>
+          ${S.signature ? `<button type="button" class="btn btn-danger btn-sm" id="sigRemove">Remove</button>` : ''}</div>
+        <div class="grid2 stack"><div class="field"><label>Signatory name</label><input name="signatoryName" value="${esc(S.signatoryName)}" placeholder="e.g. T. Moyo"></div>
+          <div class="field"><label>Designation</label><input name="signatoryTitle" value="${esc(S.signatoryTitle)}" placeholder="e.g. Director"></div></div>
+        <label class="switch"><span>Sign all documents automatically<br><span class="muted" style="font-size:12.5px">Can still be switched off on any single document</span></span><input type="checkbox" name="autoSign" ${S.autoSign !== false ? 'checked' : ''}></label>
+        <p class="hint">Tip: sign in dark pen on plain white paper, photograph it flat in good light, and crop close to the signature.</p>
+      </div>
       <div class="card"><h2>Banking details</h2>
         <div class="field"><textarea name="bank" rows="6">${esc(S.bank)}</textarea></div>
         <p class="hint">Printed on quotations and invoices.</p></div>
@@ -978,7 +1006,7 @@
     $('#setForm').onsubmit = async e => {
       e.preventDefault();
       const f = formData(e.target);
-      ['companyName', 'tradingName', 'address', 'phone', 'email', 'website', 'regNo', 'tin', 'vatNo', 'bank', 'currency', 'preparedBy', 'vatEnabled'].forEach(k => S[k] = f[k]);
+      ['companyName', 'tradingName', 'address', 'phone', 'email', 'website', 'regNo', 'tin', 'vatNo', 'bank', 'currency', 'preparedBy', 'vatEnabled', 'signatoryName', 'signatoryTitle', 'autoSign'].forEach(k => S[k] = f[k]);
       S.bank = $('[name=bank]').value; // keep line breaks/spacing
       S.vatRate = CQ.num(f.vatRate); S.quoteValidDays = parseInt(f.quoteValidDays) || 0; S.invoiceDueDays = parseInt(f.invoiceDueDays) || 0;
       ['quote', 'invoice', 'boq'].forEach(t => {
@@ -994,6 +1022,7 @@
       S.logo = await resizeImage(file, 900); await saveSettings(); toast('Logo updated'); renderSettings();
     };
     const lr = $('#logoReset'); if (lr) lr.onclick = async () => { S.logo = null; await saveSettings(); renderSettings(); };
+    bindSignatureSettings();
     $('#bkExport').onclick = async () => {
       S.lastBackupAt = new Date().toISOString(); await saveSettings();
       const data = await DB.exportAll();
@@ -1017,6 +1046,52 @@
     };
     const pb = $('#persistBtn'); if (pb) pb.onclick = async e => { e.preventDefault(); const ok = await navigator.storage?.persist?.(); toast(ok ? 'Storage protection on' : 'Browser declined – install the app to enable'); renderSettings(); };
     const ib = $('#installBtn'); if (ib) ib.onclick = doInstall;
+  }
+
+  /* ---------- signature ---------- */
+  let sigSourceImg = null;
+  async function sigSource() {
+    if (sigSourceImg) return sigSourceImg;
+    if (!S.signatureOriginal) return null;
+    sigSourceImg = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = S.signatureOriginal; });
+    return sigSourceImg;
+  }
+  async function processSignature() {
+    const src = await sigSource(); if (!src) return;
+    const r = SIG.clean(src, { sensitivity: S.sigSensitivity || 5, ink: S.sigInk || 'navy' });
+    S.signature = r.dataUrl; S.signatureW = r.width; S.signatureH = r.height;
+    if (S.autoSign === undefined) S.autoSign = true;
+    await saveSettings();
+    return r;
+  }
+  function bindSignatureSettings() {
+    const prev = () => { const p = $('#sigPrev'); if (p) { p.classList.remove('empty'); p.innerHTML = `<img src="${S.signature}" alt="Signature">`; } };
+    $('#sigFile').onchange = async e => {
+      const file = e.target.files[0]; if (!file) return;
+      const box = $('#sigPrev'); box.innerHTML = '<span>Removing background…</span>';
+      try {
+        const img = await SIG.loadImage(file);
+        // keep a compact copy of the original so the clean-up can be fine-tuned later
+        const c = document.createElement('canvas'); const k = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight));
+        c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
+        S.signatureOriginal = c.toDataURL('image/jpeg', 0.9); sigSourceImg = null;
+        S.autoSign = true;
+        const r = await processSignature();
+        toast(r.coverage > 0.3 ? 'Signature added – if it looks patchy, move the slider towards "Stronger"' : 'Signature added and background removed', 4000);
+        renderSettings().then(() => $('#sigCard')?.scrollIntoView({ block: 'start' }));
+      } catch (err) { toast(err.message || 'Could not process the signature', 5000); renderSettings(); }
+    };
+    const redo = async () => {
+      S.sigInk = $('#sigInk').value; S.sigSensitivity = +$('#sigSens').value;
+      try { await processSignature(); prev(); } catch (err) { toast(err.message, 4000); }
+    };
+    const ink = $('#sigInk'); if (ink) ink.onchange = redo;
+    const sens = $('#sigSens'); if (sens) sens.onchange = redo;
+    const rm = $('#sigRemove'); if (rm) rm.onclick = async () => {
+      if (!(await confirmSheet('Remove signature?', 'Documents will be printed with a blank signature line.', 'Remove', true))) return;
+      S.signature = null; S.signatureOriginal = null; sigSourceImg = null; await saveSettings(); renderSettings();
+    };
   }
 
   function resizeImage(file, max) {

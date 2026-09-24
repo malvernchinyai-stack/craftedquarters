@@ -17,6 +17,7 @@ The developer credit appears inside the app (Home and Settings → About) only; 
 - Clients book and reusable price list (materials, labour, services)
 - Automatic numbering (QT-2026-0001, INV-2026-0001, BOQ-2026-0001) – prefixes editable
 - Settings: company details, logo, banking details, VAT, currency (USD / ZWG / ZAR), default terms
+- Authorised signature: upload a photo of the freehand signature in Settings – the background is removed automatically on the phone and the signature is added to every document (can be switched off per document)
 - Paid in full / Cancelled stamps on invoices; numbering restarts each year
 - Android back button closes pop-up panels; backup reminder every 14 days
 - 100% offline: data is stored on the device (IndexedDB). Backup/restore to a JSON file

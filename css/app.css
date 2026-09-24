@@ -240,3 +240,16 @@ input:focus, select:focus, textarea:focus { outline: 2px solid rgba(10,108,214,.
 .stamp.paid { color: var(--green); }
 .stamp.cancelled { color: var(--red); }
 @media print { .dev-credit, .dev-box { display: none !important; } }
+
+/* Signature */
+.sig-preview { height: 120px; border-radius: 12px; border: 1px dashed var(--line); margin-bottom: 12px; display: flex; align-items: center; justify-content: center; padding: 10px;
+  background-color: #fff; background-image: linear-gradient(45deg, #EEF2F7 25%, transparent 25%), linear-gradient(-45deg, #EEF2F7 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #EEF2F7 75%), linear-gradient(-45deg, transparent 75%, #EEF2F7 75%);
+  background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0; }
+.sig-preview img { max-height: 100%; max-width: 100%; }
+.sig-preview.empty, .sig-preview span { color: var(--muted); font-size: 13px; }
+input[type=range] { width: 100%; accent-color: var(--blue); min-height: 30px; padding: 0 !important; border: 0 !important; }
+.range-lbl { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+.paper .p-sigs { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 22px; font-size: 11px; }
+.paper .p-sig-img { height: 54px; display: flex; align-items: flex-end; }
+.paper .p-sig-img img { max-height: 54px; max-width: 80%; margin-bottom: -6px; }
+.paper .p-sig-line { border-top: 1px solid #8A95A8; margin-bottom: 4px; }

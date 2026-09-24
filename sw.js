@@ -1,8 +1,8 @@
 /* Crafted Quarters Docs – service worker (offline-first) */
-const CACHE = 'cq-docs-v1.1.0';
+const CACHE = 'cq-docs-v1.2.0';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest', './css/app.css',
-  './js/db.js', './js/core.js', './js/pdf.js', './js/app.js',
+  './js/db.js', './js/core.js', './js/signature.js', './js/pdf.js', './js/app.js',
   './vendor/jspdf.umd.min.js', './vendor/jspdf.plugin.autotable.min.js',
   './assets/logo-white.png', './assets/logo-pdf.jpg', './assets/logo-full.png', './assets/logo-mark.png',
   './assets/icon-192.png', './assets/icon-512.png', './assets/icon-maskable-512.png',

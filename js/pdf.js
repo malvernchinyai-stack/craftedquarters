@@ -292,18 +292,40 @@ const PDF = (() => {
     block('TERMS & CONDITIONS', doc.terms, false);
 
     // ---------- Signatures ----------
-    ensure(24);
+    const signName = doc.preparedBy || settings.signatoryName || settings.preparedBy || '';
+    const signTitle = settings.signatoryTitle || '';
+    const useSig = !!(settings.signature && settings.autoSign !== false && doc.sign !== false);
+    ensure(34);
     y += 4;
     const sw = (W - 2 * M - 20) / 2;
-    const sig = (x, label, name) => {
-      pdf.setDrawColor(...MUTED); pdf.line(x, y + 10, x + sw, y + 10);
-      pdf.setFontSize(8.2); pdf.setTextColor(...MUTED); pdf.setFont('helvetica', 'normal');
-      pdf.text(label, x, y + 14.5);
-      if (name) { pdf.setTextColor(...TEXT); pdf.setFont('helvetica', 'bold'); pdf.text(name, x, y + 8); }
-    };
-    sig(M, `${isBoq ? 'Prepared' : 'Issued'} by – ${settings.tradingName || settings.companyName}`, doc.preparedBy || settings.preparedBy);
-    sig(M + sw + 20, isInv ? 'Received by (client) – name, signature & date' : 'Accepted by (client) – name, signature & date', '');
-    y += 20;
+    const lineY = y + 18;
+    // Crafted Quarters (left)
+    if (useSig) {
+      try {
+        const ratio = (settings.signatureW || 3) / (settings.signatureH || 1);
+        let ih = 15, iw = ih * ratio;
+        if (iw > sw * 0.8) { iw = sw * 0.8; ih = iw / ratio; }
+        pdf.addImage(settings.signature, 'PNG', M + 2, lineY + 1.5 - ih, iw, ih, 'cq-signature', 'FAST');
+      } catch (e) { /* ignore a bad image */ }
+    }
+    pdf.setDrawColor(...MUTED); pdf.line(M, lineY, M + sw, lineY);
+    pdf.setFontSize(8.2); pdf.setTextColor(...MUTED); pdf.setFont('helvetica', 'normal');
+    pdf.text(`${isBoq ? 'Prepared' : 'Issued'} for and on behalf of ${settings.companyName}`, M, lineY + 4, { maxWidth: sw });
+    if (signName || signTitle) {
+      pdf.setTextColor(...TEXT); pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.8);
+      pdf.text(safe([signName, signTitle].filter(Boolean).join(', ')), M, lineY + 8.5, { maxWidth: sw });
+    }
+    if (useSig) {
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); pdf.setTextColor(...MUTED);
+      pdf.text(`Date: ${CQ.fmtDate(doc.date)}`, M + sw, lineY + 8.5, { align: 'right' });
+    }
+    // Client (right)
+    const cx = M + sw + 20;
+    pdf.setDrawColor(...MUTED); pdf.line(cx, lineY, cx + sw, lineY);
+    pdf.setFontSize(8.2); pdf.setTextColor(...MUTED); pdf.setFont('helvetica', 'normal');
+    pdf.text(isInv ? 'Received by (client)' : 'Accepted by (client)', cx, lineY + 4);
+    pdf.text('Name, signature & date', cx, lineY + 8.5);
+    y = lineY + 12;
 
     // ---------- Footer on every page ----------
     const pages = pdf.internal.getNumberOfPages();
