@@ -34,10 +34,15 @@ const PDF = (() => {
   // Standard PDF fonts cannot draw superscripts; write m2 / m3 instead.
   const safe = t => String(t ?? '').replace(/²/g, '2').replace(/³/g, '3').replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
 
-  function fileName(doc) {
-    const client = (doc.client && doc.client.name ? doc.client.name : '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 30);
-    return `${doc.number}${client ? '_' + client : ''}.pdf`;
+  // File name: "<Client name> - <Document type> <Number>.pdf"
+  // e.g. "Mutasa Family Trust - Quotation QT-2026-0001.pdf"
+  function docTitle(doc) {
+    const client = String(doc.client && doc.client.name ? doc.client.name : 'No client')
+      .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ')   // characters not allowed in file names
+      .replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '').slice(0, 60).trim();
+    return `${client} - ${CQ.TYPES[doc.type].label} ${doc.number}`;
   }
+  function fileName(doc) { return `${docTitle(doc)}.pdf`; }
 
   async function build(doc, settings) {
     const { jsPDF } = window.jspdf;
@@ -51,7 +56,7 @@ const PDF = (() => {
     const isBoq = doc.type === 'boq';
     const isInv = doc.type === 'invoice';
 
-    pdf.setProperties({ title: `${type.label} ${doc.number}`, author: settings.companyName, creator: 'Crafted Quarters Docs' });
+    pdf.setProperties({ title: docTitle(doc), author: settings.companyName, creator: 'Crafted Quarters Docs' });
 
     // ---------- Header ----------
     pdf.setFillColor(...NAVY); pdf.rect(0, 0, W, 4, 'F');
@@ -358,7 +363,7 @@ const PDF = (() => {
     const b = await blob(doc, settings);
     const file = new File([b], fileName(doc), { type: 'application/pdf' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: `${CQ.TYPES[doc.type].label} ${doc.number}`, text: `${CQ.TYPES[doc.type].label} ${doc.number} from ${settings.tradingName}` });
+      await navigator.share({ files: [file], title: docTitle(doc), text: `${CQ.TYPES[doc.type].label} ${doc.number} from ${settings.tradingName}` });
       return true;
     }
     return false;
@@ -368,5 +373,5 @@ const PDF = (() => {
     return URL.createObjectURL(await blob(doc, settings));
   }
 
-  return { build, blob, download, share, previewUrl, fileName };
+  return { build, blob, download, share, previewUrl, fileName, docTitle };
 })();

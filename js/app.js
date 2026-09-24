@@ -1,6 +1,6 @@
 /* Crafted Quarters Docs – main application */
 (() => {
-  const APP_VERSION = '1.2.0';
+  const APP_VERSION = '1.2.1';
   // Developer credit – shown inside the app only, never on printed / PDF documents
   const DEVELOPER = {
     name: 'Pilotage Business Consultants (Pvt) Ltd',
